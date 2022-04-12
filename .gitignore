@@ -1,0 +1,30 @@
+# Axon Git Ignore Rules
+
+# Build artifacts
+build/
+bin/axon-native
+bin/axon-runtime
+*.o
+*.so
+*.dylib
+*.a
+
+# Temporary files and logs
+*.log
+*.tmp
+*.pid
+.DS_Store
+
+# Python environment and caches
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo

@@ -1,0 +1,9 @@
+# Hack configuration for Axon
+assume_php = false
+enable_experimental_tc_features = all
+disallow_generic_arrays = true
+disallow_instantiate_abstract_classes = true
+disallow_trait_reuse = true
+auto_namespace_map = {"Axon": "Axon"}
+ignored_paths = [ "build/.*", ".git/.*" ]
+version = ^4.100.0
