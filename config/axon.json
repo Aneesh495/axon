@@ -1,0 +1,52 @@
+{
+  "server": {
+    "host": "0.0.0.0",
+    "port": 9080,
+    "admin_port": 9081,
+    "metrics_port": 9090,
+    "workers": 4,
+    "max_connections": 10000,
+    "keep_alive_timeout_ms": 30000,
+    "request_timeout_ms": 5000
+  },
+  "dataloader": {
+    "batch_window_micros": 500,
+    "max_batch_size": 1024,
+    "cache_enabled": true
+  },
+  "cache": {
+    "l1_request_cache_enabled": true,
+    "l2_lru_capacity": 65536,
+    "l2_arc_capacity": 65536,
+    "default_ttl_seconds": 3600
+  },
+  "rebac": {
+    "max_traversal_depth": 32,
+    "cycle_detection": true,
+    "cache_decisions": true,
+    "audit_trail_enabled": true
+  },
+  "storage": {
+    "engine": "memory_mvcc",
+    "wal_enabled": true,
+    "wal_dir": "./data/wal",
+    "wal_segment_bytes": 67108864,
+    "checkpoint_interval_seconds": 60,
+    "snapshot_compression": "zstd"
+  },
+  "federation": {
+    "enabled": true,
+    "query_plan_cache_capacity": 4096,
+    "subgraph_timeout_ms": 2500,
+    "circuit_breaker": {
+      "failure_threshold": 5,
+      "reset_timeout_seconds": 30
+    }
+  },
+  "telemetry": {
+    "metrics_enabled": true,
+    "tracing_enabled": true,
+    "sample_rate": 1.0,
+    "service_name": "axon-engine"
+  }
+}

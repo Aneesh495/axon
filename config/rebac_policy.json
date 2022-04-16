@@ -1,0 +1,72 @@
+{
+  "namespaces": [
+    {
+      "name": "organization",
+      "relations": {
+        "admin": {
+          "this": {}
+        },
+        "member": {
+          "union": [
+            { "this": {} },
+            { "computed_userset": { "relation": "admin" } }
+          ]
+        }
+      }
+    },
+    {
+      "name": "workspace",
+      "relations": {
+        "parent_org": {
+          "this": {}
+        },
+        "owner": {
+          "this": {}
+        },
+        "editor": {
+          "union": [
+            { "this": {} },
+            { "computed_userset": { "relation": "owner" } }
+          ]
+        },
+        "viewer": {
+          "union": [
+            { "this": {} },
+            { "computed_userset": { "relation": "editor" } },
+            { "tuple_to_userset": { "tupleset": { "relation": "parent_org" }, "computed_userset": { "relation": "member" } } }
+          ]
+        }
+      }
+    },
+    {
+      "name": "document",
+      "relations": {
+        "parent_workspace": {
+          "this": {}
+        },
+        "owner": {
+          "this": {}
+        },
+        "editor": {
+          "union": [
+            { "this": {} },
+            { "computed_userset": { "relation": "owner" } }
+          ]
+        },
+        "viewer": {
+          "union": [
+            { "this": {} },
+            { "computed_userset": { "relation": "editor" } },
+            { "tuple_to_userset": { "tupleset": { "relation": "parent_workspace" }, "computed_userset": { "relation": "viewer" } } }
+          ]
+        },
+        "commenter": {
+          "union": [
+            { "this": {} },
+            { "computed_userset": { "relation": "viewer" } }
+          ]
+        }
+      }
+    }
+  ]
+}

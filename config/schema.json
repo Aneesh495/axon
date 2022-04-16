@@ -1,0 +1,105 @@
+{
+  "entities": [
+    {
+      "name": "User",
+      "tableName": "axon_users",
+      "fields": {
+        "id": { "type": "ID", "primary": true },
+        "username": { "type": "String", "unique": true, "nullable": false },
+        "email": { "type": "String", "unique": true, "nullable": false },
+        "displayName": { "type": "String", "nullable": true },
+        "status": { "type": "String", "default": "active" },
+        "createdAt": { "type": "Int", "nullable": false },
+        "updatedAt": { "type": "Int", "nullable": false }
+      },
+      "edges": {
+        "documents": {
+          "target": "Document",
+          "cardinality": "ONE_TO_MANY",
+          "inverse": "owner"
+        },
+        "memberships": {
+          "target": "OrganizationMember",
+          "cardinality": "ONE_TO_MANY",
+          "inverse": "user"
+        }
+      }
+    },
+    {
+      "name": "Organization",
+      "tableName": "axon_organizations",
+      "fields": {
+        "id": { "type": "ID", "primary": true },
+        "name": { "type": "String", "unique": true, "nullable": false },
+        "slug": { "type": "String", "unique": true, "nullable": false },
+        "tier": { "type": "String", "default": "enterprise" },
+        "createdAt": { "type": "Int", "nullable": false }
+      },
+      "edges": {
+        "workspaces": {
+          "target": "Workspace",
+          "cardinality": "ONE_TO_MANY",
+          "inverse": "organization"
+        },
+        "members": {
+          "target": "OrganizationMember",
+          "cardinality": "ONE_TO_MANY",
+          "inverse": "organization"
+        }
+      }
+    },
+    {
+      "name": "Workspace",
+      "tableName": "axon_workspaces",
+      "fields": {
+        "id": { "type": "ID", "primary": true },
+        "orgId": { "type": "ID", "nullable": false },
+        "name": { "type": "String", "nullable": false },
+        "visibility": { "type": "String", "default": "private" },
+        "createdAt": { "type": "Int", "nullable": false }
+      },
+      "edges": {
+        "organization": {
+          "target": "Organization",
+          "cardinality": "MANY_TO_ONE",
+          "foreignKey": "orgId",
+          "inverse": "workspaces"
+        },
+        "documents": {
+          "target": "Document",
+          "cardinality": "ONE_TO_MANY",
+          "inverse": "workspace"
+        }
+      }
+    },
+    {
+      "name": "Document",
+      "tableName": "axon_documents",
+      "fields": {
+        "id": { "type": "ID", "primary": true },
+        "workspaceId": { "type": "ID", "nullable": false },
+        "ownerId": { "type": "ID", "nullable": false },
+        "title": { "type": "String", "nullable": false },
+        "content": { "type": "String", "default": "" },
+        "version": { "type": "Int", "default": 1 },
+        "isArchived": { "type": "Bool", "default": false },
+        "createdAt": { "type": "Int", "nullable": false },
+        "updatedAt": { "type": "Int", "nullable": false }
+      },
+      "edges": {
+        "workspace": {
+          "target": "Workspace",
+          "cardinality": "MANY_TO_ONE",
+          "foreignKey": "workspaceId",
+          "inverse": "documents"
+        },
+        "owner": {
+          "target": "User",
+          "cardinality": "MANY_TO_ONE",
+          "foreignKey": "ownerId",
+          "inverse": "documents"
+        }
+      }
+    }
+  ]
+}
