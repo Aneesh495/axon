@@ -1,0 +1,16 @@
+{
+  "queries": [
+    {
+      "name": "PointLookup",
+      "query": "{ Document(id: \"doc-1\") { title content version } }"
+    },
+    {
+      "name": "NestedAssociation",
+      "query": "{ Document(id: \"doc-runbook\") { title owner { username email } workspace { name } } }"
+    },
+    {
+      "name": "FederatedStitch",
+      "query": "{ User(id: \"usr-1\") { username documents { title } memberships { organization { name } } } }"
+    }
+  ]
+}

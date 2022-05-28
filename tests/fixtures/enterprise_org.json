@@ -1,0 +1,22 @@
+{
+  "organizations": [
+    { "id": "org-alpha", "name": "Alpha Corp", "slug": "alpha" },
+    { "id": "org-beta", "name": "Beta Labs", "slug": "beta" }
+  ],
+  "workspaces": [
+    { "id": "ws-infra", "orgId": "org-alpha", "name": "Infrastructure" },
+    { "id": "ws-security", "orgId": "org-alpha", "name": "Security" }
+  ],
+  "documents": [
+    { "id": "doc-runbook", "workspaceId": "ws-infra", "ownerId": "usr-alice", "title": "Production Runbook" },
+    { "id": "doc-keys", "workspaceId": "ws-security", "ownerId": "usr-bob", "title": "Secret Management Protocol" }
+  ],
+  "tuples": [
+    "organization:org-alpha#admin@user:usr-alice",
+    "organization:org-alpha#member@user:usr-bob",
+    "workspace:ws-infra#parent_org@organization:org-alpha#member",
+    "workspace:ws-infra#owner@user:usr-alice",
+    "document:doc-runbook#parent_workspace@workspace:ws-infra#viewer",
+    "document:doc-runbook#owner@user:usr-alice"
+  ]
+}

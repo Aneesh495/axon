@@ -1,0 +1,17 @@
+{
+  "users": [
+    { "id": "usr-1", "username": "alice", "email": "alice@example.com", "role": "admin" },
+    { "id": "usr-2", "username": "bob", "email": "bob@example.com", "role": "member" },
+    { "id": "usr-3", "username": "carol", "email": "carol@example.com", "role": "guest" }
+  ],
+  "posts": [
+    { "id": "pst-1", "authorId": "usr-1", "title": "First Announcement", "visibility": "public" },
+    { "id": "pst-2", "authorId": "usr-2", "title": "Confidential Draft", "visibility": "restricted" }
+  ],
+  "tuples": [
+    "post:pst-1#owner@user:usr-1",
+    "post:pst-1#viewer@user:usr-2",
+    "post:pst-1#viewer@user:usr-3",
+    "post:pst-2#owner@user:usr-2"
+  ]
+}
