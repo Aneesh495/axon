@@ -1,0 +1,22 @@
+{
+  "name": "@axon/client",
+  "version": "1.0.0",
+  "description": "Typed client software development kit for Axon distributed graph engine and ReBAC hypervisor",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc"
+  },
+  "keywords": [
+    "graph-engine",
+    "rebac",
+    "zanzibar",
+    "graphql",
+    "distributed-systems"
+  ],
+  "author": "Aneesh Parthasarathy",
+  "license": "MIT",
+  "devDependencies": {
+    "typescript": "^5.3.0"
+  }
+}
