@@ -1,0 +1,58 @@
+version: '3.8'
+
+services:
+  axon-node-1:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: axon-node-1
+    command: ["server", "9080"]
+    ports:
+      - "9080:9080"
+    environment:
+      - NODE_ID=1
+      - CLUSTER_SEEDS=axon-node-1:9080,axon-node-2:9080,axon-node-3:9080
+    networks:
+      - axon-mesh
+
+  axon-node-2:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: axon-node-2
+    command: ["server", "9080"]
+    ports:
+      - "9081:9080"
+    environment:
+      - NODE_ID=2
+      - CLUSTER_SEEDS=axon-node-1:9080,axon-node-2:9080,axon-node-3:9080
+    networks:
+      - axon-mesh
+
+  axon-node-3:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: axon-node-3
+    command: ["server", "9080"]
+    ports:
+      - "9082:9080"
+    environment:
+      - NODE_ID=3
+      - CLUSTER_SEEDS=axon-node-1:9080,axon-node-2:9080,axon-node-3:9080
+    networks:
+      - axon-mesh
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: axon-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    networks:
+      - axon-mesh
+
+networks:
+  axon-mesh:
+    driver: bridge
