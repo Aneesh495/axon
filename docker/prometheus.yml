@@ -1,0 +1,11 @@
+global:
+  scrape_interval: 5s
+  evaluation_interval: 5s
+
+scrape_configs:
+  - job_name: 'axon-cluster'
+    static_configs:
+      - targets:
+          - 'axon-node-1:9080'
+          - 'axon-node-2:9080'
+          - 'axon-node-3:9080'
