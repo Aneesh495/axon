@@ -1,0 +1,43 @@
+{
+  "entities": [
+    {
+      "name": "User",
+      "fields": {
+        "id": { "type": "ID", "primary": true },
+        "username": { "type": "String", "unique": true },
+        "displayName": { "type": "String" }
+      },
+      "edges": {
+        "posts": { "target": "Post", "cardinality": "ONE_TO_MANY" }
+      }
+    },
+    {
+      "name": "Post",
+      "fields": {
+        "id": { "type": "ID", "primary": true },
+        "authorId": { "type": "ID" },
+        "content": { "type": "String" },
+        "visibility": { "type": "String", "default": "public" }
+      },
+      "edges": {
+        "author": { "target": "User", "cardinality": "MANY_TO_ONE", "foreignKey": "authorId" }
+      }
+    }
+  ],
+  "rebac": {
+    "namespaces": [
+      {
+        "name": "post",
+        "relations": {
+          "owner": { "this": {} },
+          "viewer": {
+            "union": [
+              { "this": {} },
+              { "computed_userset": { "relation": "owner" } }
+            ]
+          }
+        }
+      }
+    ]
+  }
+}
