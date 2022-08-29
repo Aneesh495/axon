@@ -1,0 +1,57 @@
+{
+  "entities": [
+    {
+      "name": "Organization",
+      "fields": {
+        "id": { "type": "ID", "primary": true },
+        "name": { "type": "String", "unique": true }
+      }
+    },
+    {
+      "name": "Workspace",
+      "fields": {
+        "id": { "type": "ID", "primary": true },
+        "orgId": { "type": "ID" },
+        "name": { "type": "String" }
+      }
+    },
+    {
+      "name": "Document",
+      "fields": {
+        "id": { "type": "ID", "primary": true },
+        "workspaceId": { "type": "ID" },
+        "title": { "type": "String" }
+      }
+    }
+  ],
+  "rebac": {
+    "namespaces": [
+      {
+        "name": "organization",
+        "relations": {
+          "admin": { "this": {} },
+          "member": {
+            "union": [
+              { "this": {} },
+              { "computed_userset": { "relation": "admin" } }
+            ]
+          }
+        }
+      },
+      {
+        "name": "workspace",
+        "relations": {
+          "parent_org": { "this": {} },
+          "owner": { "this": {} },
+          "member": {
+            "union": [
+              { "this": {} },
+              { "computed_userset": { "relation": "owner" } },
+              { "tuple_to_userset": { "tupleset": { "relation": "parent_org" }, "computed_userset": { "relation": "member" } } }
+            ]
+          }
+        }
+      }
+    ]
+  }
+}
