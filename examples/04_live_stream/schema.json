@@ -1,0 +1,14 @@
+{
+  "entities": [
+    {
+      "name": "LiveMessage",
+      "fields": {
+        "id": { "type": "ID", "primary": true },
+        "channelId": { "type": "ID" },
+        "sender": { "type": "String" },
+        "text": { "type": "String" },
+        "sentAt": { "type": "Int" }
+      }
+    }
+  ]
+}
