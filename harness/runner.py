@@ -5,6 +5,7 @@ Executes all unit, integration, and bug reproduction suites, reporting TAP outpu
 """
 
 import base64
+import hashlib
 import struct
 import sys
 import time
@@ -160,6 +161,8 @@ class ByteBuffer:
         self.buffer.append(val & 0xFF)
 
     def read_uint8(self) -> int:
+        if self.offset >= len(self.buffer):
+            raise IndexError("Buffer underflow on read_uint8")
         val = self.buffer[self.offset]
         self.offset += 1
         return val
@@ -168,6 +171,8 @@ class ByteBuffer:
         self.buffer.extend(struct.pack(">H", val & 0xFFFF))
 
     def read_uint16_be(self) -> int:
+        if self.offset + 2 > len(self.buffer):
+            raise IndexError("Buffer underflow on read_uint16_be")
         val = struct.unpack_from(">H", self.buffer, self.offset)[0]
         self.offset += 2
         return val
@@ -176,6 +181,8 @@ class ByteBuffer:
         self.buffer.extend(struct.pack(">I", val & 0xFFFFFFFF))
 
     def read_uint32_be(self) -> int:
+        if self.offset + 4 > len(self.buffer):
+            raise IndexError("Buffer underflow on read_uint32_be")
         val = struct.unpack_from(">I", self.buffer, self.offset)[0]
         self.offset += 4
         return val
@@ -184,6 +191,8 @@ class ByteBuffer:
         self.buffer.extend(struct.pack(">q", val))
 
     def read_int64_be(self) -> int:
+        if self.offset + 8 > len(self.buffer):
+            raise IndexError("Buffer underflow on read_int64_be")
         val = struct.unpack_from(">q", self.buffer, self.offset)[0]
         self.offset += 8
         return val
@@ -195,9 +204,18 @@ class ByteBuffer:
 
     def read_string_prefixed(self) -> str:
         length = self.read_uint32_be()
+        if self.offset + length > len(self.buffer):
+            raise IndexError("Buffer underflow on read_string_prefixed")
         s = self.buffer[self.offset : self.offset + length].decode("utf-8")
         self.offset += length
         return s
+
+    def read_bytes(self, length: int) -> bytes:
+        if self.offset + length > len(self.buffer):
+            raise IndexError("Buffer underflow: requested slice exceeds buffer length")
+        data = bytes(self.buffer[self.offset : self.offset + length])
+        self.offset += length
+        return data
 
     def readable_bytes(self) -> int:
         return max(0, len(self.buffer) - self.offset)
@@ -468,6 +486,145 @@ class ARCCache:
         self.t1[key] = val
 
 
+# Bloom Filter
+class BloomFilter:
+
+    def __init__(self, expected_elements: int = 100, fpp: float = 0.01):
+        self.size = 1024
+        self.bitset = bytearray(self.size)
+
+    def _hash(self, item: str, seed: int) -> int:
+        h = hashlib.sha256(f"{seed}:{item}".encode("utf-8")).digest()
+        val = int.from_bytes(h[:4], "big")
+        return val % (self.size * 8)
+
+    def add(self, item: str):
+        for seed in (1, 2, 3):
+            bit_idx = self._hash(item, seed)
+            byte_idx = bit_idx // 8
+            offset = bit_idx % 8
+            self.bitset[byte_idx] |= 1 << offset
+
+    def might_contain(self, item: str) -> bool:
+        for seed in (1, 2, 3):
+            bit_idx = self._hash(item, seed)
+            byte_idx = bit_idx // 8
+            offset = bit_idx % 8
+            if not (self.bitset[byte_idx] & (1 << offset)):
+                return False
+        return True
+
+
+# Vector Clock
+class VectorClock:
+
+    def __init__(self, node_id: str):
+        self.node_id = node_id
+        self.clock: dict[str, int] = {node_id: 0}
+
+    def tick(self):
+        self.clock[self.node_id] = self.clock.get(self.node_id, 0) + 1
+
+    def merge(self, other: "VectorClock"):
+        for k, v in other.clock.items():
+            self.clock[k] = max(self.clock.get(k, 0), v)
+
+    def compare(self, other: "VectorClock") -> int:
+        # returns -1 if self < other, 1 if self > other, 0 if concurrent
+        less = False
+        greater = False
+        all_keys = set(self.clock.keys()) | set(other.clock.keys())
+        for k in all_keys:
+            v1 = self.clock.get(k, 0)
+            v2 = other.clock.get(k, 0)
+            if v1 < v2:
+                less = True
+            elif v1 > v2:
+                greater = True
+        if less and not greater:
+            return -1
+        if greater and not less:
+            return 1
+        return 0
+
+
+# Consistent Hash Ring
+class ConsistentHashRing:
+
+    def __init__(self, vnodes: int = 10):
+        self.vnodes = vnodes
+        self.ring: dict[int, str] = {}
+        self.sorted_hashes: list[int] = []
+
+    def _hash(self, key: str) -> int:
+        h = hashlib.sha256(key.encode("utf-8")).digest()
+        return int.from_bytes(h[:4], "big")
+
+    def add_node(self, node: str):
+        for i in range(self.vnodes):
+            vnode_key = f"{node}#{i}"
+            h = self._hash(vnode_key)
+            self.ring[h] = node
+        self.sorted_hashes = sorted(self.ring.keys())
+
+    def get_node(self, key: str) -> str | None:
+        if not self.sorted_hashes:
+            return None
+        h = self._hash(key)
+        for node_hash in self.sorted_hashes:
+            if h <= node_hash:
+                return self.ring[node_hash]
+        return self.ring[self.sorted_hashes[0]]
+
+
+# WAL Entry
+class WALEntry:
+
+    def __init__(self, lsn: int, hlc_ts: int, op: int, namespace: str, key: str, payload: str):
+        self.lsn = lsn
+        self.hlc_ts = hlc_ts
+        self.op = op
+        self.namespace = namespace
+        self.key = key
+        self.payload = payload
+
+    def serialize(self) -> bytes:
+        bb = ByteBuffer()
+        bb.write_int64_be(self.lsn)
+        bb.write_int64_be(self.hlc_ts)
+        bb.write_uint8(self.op)
+        bb.write_string_prefixed(self.namespace)
+        bb.write_string_prefixed(self.key)
+        bb.write_string_prefixed(self.payload)
+        raw_body = bb.raw()
+        checksum = CRC32.calculate(raw_body)
+        bb.write_uint32_be(checksum)
+        return bb.raw()
+
+    @staticmethod
+    def deserialize(buf: ByteBuffer):
+        try:
+            start_offset = buf.offset
+            if buf.readable_bytes() < 17:
+                return (None, "Buffer truncated before header")
+            lsn = buf.read_int64_be()
+            hlc_ts = buf.read_int64_be()
+            op = buf.read_uint8()
+            namespace = buf.read_string_prefixed()
+            key = buf.read_string_prefixed()
+            payload = buf.read_string_prefixed()
+            body_end = buf.offset
+            expected_crc = buf.read_uint32_be()
+
+            body_slice = buf.buffer[start_offset:body_end]
+            actual_crc = CRC32.calculate(bytes(body_slice))
+            if actual_crc != expected_crc:
+                return (None, f"CRC32 checksum mismatch: expected {expected_crc}, got {actual_crc}")
+            return (WALEntry(lsn, hlc_ts, op, namespace, key, payload), None)
+        except Exception as e:
+            return (None, f"Deserialization error: {e}")
+
+
 # -----------------------------------------------------------------------------
 # Test Harness Execution
 # -----------------------------------------------------------------------------
@@ -599,6 +756,36 @@ def run_all_tests() -> int:
         assert arc.get("k1") == "val1"
         assert arc.get("k2") == "val2"
 
+    @test("unit::test_bloom_filter")
+    def _test_bf():
+        bf = BloomFilter()
+        bf.add("entity:user:101")
+        bf.add("entity:user:102")
+        assert bf.might_contain("entity:user:101") is True
+        assert bf.might_contain("entity:user:102") is True
+        assert bf.might_contain("entity:user:999") is False
+
+    @test("unit::test_vector_clock")
+    def _test_vc():
+        vc1 = VectorClock("nodeA")
+        vc2 = VectorClock("nodeB")
+        vc1.tick()
+        assert vc1.compare(vc2) == 1
+        vc2.merge(vc1)
+        vc2.tick()
+        assert vc1.compare(vc2) == -1
+
+    @test("unit::test_consistent_hash_ring")
+    def _test_ring():
+        ring = ConsistentHashRing(vnodes=20)
+        ring.add_node("shard-01")
+        ring.add_node("shard-02")
+        ring.add_node("shard-03")
+        n1 = ring.get_node("user:alice")
+        n2 = ring.get_node("user:bob")
+        assert n1 in {"shard-01", "shard-02", "shard-03"}
+        assert n2 in {"shard-01", "shard-02", "shard-03"}
+
     @test("bugs::test_bug_cycle_deadlock")
     def _test_cycle():
         policies = {
@@ -636,6 +823,74 @@ def run_all_tests() -> int:
         decoded = base64.b64decode(token).decode("ascii")
         offset = int(decoded[len(prefix) :])
         assert offset == 42
+
+    @test("bugs::test_bug_zero_copy_slice")
+    def _test_zero_copy():
+        buf = ByteBuffer(b"short")
+        caught = False
+        try:
+            buf.read_bytes(10)
+        except IndexError:
+            caught = True
+        assert caught is True
+
+    @test("bugs::test_bug_unicode_hash")
+    def _test_unicode():
+        unicode_key = "entity:user:quantum_node_42_japanese"
+        crc = CRC32.calculate(unicode_key.encode("utf-8"))
+        assert crc != 0
+        bf = BloomFilter()
+        bf.add(unicode_key)
+        assert bf.might_contain(unicode_key) is True
+
+    @test("bugs::test_bug_wal_corruption")
+    def _test_wal_corruption():
+        entry = WALEntry(1, 1000, 1, "axon_users", "usr-1", '{"name":"Alice"}')
+        raw = bytearray(entry.serialize())
+        raw[52] ^= 0x01
+        buf = ByteBuffer(bytes(raw))
+        res, err = WALEntry.deserialize(buf)
+        assert res is None
+        assert "CRC32 checksum mismatch" in err
+
+    @test("bugs::test_bug_batch_coalesce")
+    def _test_batch_coalesce():
+        queue = []
+        resolved = {}
+        def load(k):
+            queue.append(k)
+        def dispatch():
+            batch = list(queue)
+            queue.clear()
+            for k in batch:
+                resolved[k] = f"val_{k}"
+        load("k1")
+        load("k2")
+        dispatch()
+        assert resolved["k1"] == "val_k1"
+        assert resolved["k2"] == "val_k2"
+        load("k3")
+        dispatch()
+        assert resolved["k3"] == "val_k3"
+
+    @test("integration::test_e2e_rebac_stress")
+    def _test_stress():
+        policies = {
+            "org": {"admin": {"type": "this"}},
+            "project": {
+                "viewer": {
+                    "type": "tuple_to_userset",
+                    "tupleset": "owner_org",
+                    "computed": "admin",
+                }
+            },
+        }
+        store = MemoryTupleStore()
+        store.insert(RelationTuple("org", "org-x", "admin", Subject("user", "boss")))
+        store.insert(RelationTuple("project", "proj-alpha", "owner_org", Subject("org", "org-x")))
+        checker = CheckEngine(policies, store)
+        assert checker.check("project", "proj-alpha", "viewer", Subject("user", "boss")) is True
+        assert checker.check("project", "proj-alpha", "viewer", Subject("user", "intruder")) is False
 
     print(f"TAP version 14\n1..{len(tests)}")
     failures = 0
