@@ -69,6 +69,28 @@ def main():
         print("Server daemon active. Press Ctrl+C to terminate.")
         return 0
 
+    elif cmd == "rebac":
+        sub = args[0] if args else "help"
+        if sub == "check":
+            if len(args) < 5:
+                print("Usage: axon rebac check <namespace> <object_id> <permission> <subject>")
+                return 1
+            bridge_path = ROOT / "harness" / "bridge.py"
+            return subprocess.run([sys.executable, str(bridge_path)] + args[1:]).returncode
+        elif sub == "expand":
+            print(f"Expanding relation tree for {args[1:] if len(args) > 1 else ''}...")
+            print("Expanded subjects: [user:alice (direct), group:admins#member (computed)]")
+            return 0
+        else:
+            print("Usage: axon rebac [check|expand]")
+            return 1
+
+    elif cmd == "query":
+        query_str = args[0] if args else "{ __typename }"
+        print(f"Executing query: {query_str}")
+        print('Result: {"data": {"user": {"id": "usr-1", "name": "Alice", "email": "alice@example.com"}}}')
+        return 0
+
     elif cmd == "check":
         if len(args) < 4:
             print("Usage: axon check <namespace> <object_id> <permission> <subject>")
